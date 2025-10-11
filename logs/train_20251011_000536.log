@@ -1,0 +1,13 @@
+2025-10-11 00:05:36 | INFO | Logging to /srv/llm/logs/train_20251011_000536.log
+2025-10-11 00:05:36 | INFO | Using device: cuda
+2025-10-11 00:05:36 | INFO | GPU: NVIDIA GeForce RTX 2060 | total=6.4GB
+2025-10-11 00:05:36 | INFO | Loading tokenizer from: Qwen/Qwen2.5-Coder-3B-Instruct
+2025-10-11 00:05:36 | INFO | Loading base model: Qwen/Qwen2.5-Coder-3B-Instruct
+2025-10-11 00:05:38 | INFO | We will use 90% of the memory on device 0 for storing the model, and 10% for the buffer to avoid OOM. You can set `max_memory` in to a higher value to use more memory (at your own risk).
+2025-10-11 00:05:46 | INFO | Parameters: trainable=29,933,568 (1.73%) total=1,728,606,208
+2025-10-11 00:05:46 | INFO | Loading SFT dataset: /srv/llm/data/sft/frappe_sft.jsonl (sha256=23d3774ee7abe6ca136e3eca19b1e7bbb7a72be9c6aa05f99a490b306a5fef21)
+2025-10-11 00:05:46 | INFO | SFT sizes: train=23 val=1
+2025-10-11 00:05:46 | INFO | Starting SFT ...
+2025-10-11 00:06:35 | INFO | Evaluating ...
+2025-10-11 00:06:35 | INFO | Saving adapter & tokenizer to: /srv/llm/models/finetune/q25c3b-frappe-sft
+2025-10-11 00:06:36 | INFO | Done. Artifacts in: /srv/llm/models/finetune/q25c3b-frappe-sft

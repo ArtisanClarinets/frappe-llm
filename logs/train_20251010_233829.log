@@ -1,0 +1,41 @@
+2025-10-10 23:38:29 | INFO | Logging to /srv/llm/logs/train_20251010_233829.log
+2025-10-10 23:38:29 | INFO | Using device: cuda
+2025-10-10 23:38:29 | INFO | GPU: NVIDIA GeForce RTX 2060 | total=6.0GB reserved=0.0B allocated=0.0B
+2025-10-10 23:38:29 | INFO | Loading tokenizer from: /srv/llm/models/base/qwen2.5-coder-3b-instruct
+2025-10-10 23:38:29 | ERROR | Fatal error: Repo id must be in the form 'repo_name' or 'namespace/repo_name': '/srv/llm/models/base/qwen2.5-coder-3b-instruct'. Use `repo_type` argument if needed.
+Traceback (most recent call last):
+  File "/home/dylan/.local/lib/python3.12/site-packages/transformers/utils/hub.py", line 478, in cached_files
+    hf_hub_download(
+  File "/home/dylan/.local/lib/python3.12/site-packages/huggingface_hub/utils/_validators.py", line 106, in _inner_fn
+    validate_repo_id(arg_value)
+  File "/home/dylan/.local/lib/python3.12/site-packages/huggingface_hub/utils/_validators.py", line 154, in validate_repo_id
+    raise HFValidationError(
+huggingface_hub.errors.HFValidationError: Repo id must be in the form 'repo_name' or 'namespace/repo_name': '/srv/llm/models/base/qwen2.5-coder-3b-instruct'. Use `repo_type` argument if needed.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/srv/llm/scripts/train.py", line 509, in <module>
+    main()
+  File "/srv/llm/scripts/train.py", line 342, in main
+    tokenizer = AutoTokenizer.from_pretrained(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dylan/.local/lib/python3.12/site-packages/transformers/models/auto/tokenization_auto.py", line 1058, in from_pretrained
+    tokenizer_config = get_tokenizer_config(pretrained_model_name_or_path, **kwargs)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dylan/.local/lib/python3.12/site-packages/transformers/models/auto/tokenization_auto.py", line 890, in get_tokenizer_config
+    resolved_config_file = cached_file(
+                           ^^^^^^^^^^^^
+  File "/home/dylan/.local/lib/python3.12/site-packages/transformers/utils/hub.py", line 321, in cached_file
+    file = cached_files(path_or_repo_id=path_or_repo_id, filenames=[filename], **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dylan/.local/lib/python3.12/site-packages/transformers/utils/hub.py", line 531, in cached_files
+    _get_cache_file_to_return(path_or_repo_id, filename, cache_dir, revision, repo_type)
+  File "/home/dylan/.local/lib/python3.12/site-packages/transformers/utils/hub.py", line 144, in _get_cache_file_to_return
+    resolved_file = try_to_load_from_cache(
+                    ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dylan/.local/lib/python3.12/site-packages/huggingface_hub/utils/_validators.py", line 106, in _inner_fn
+    validate_repo_id(arg_value)
+  File "/home/dylan/.local/lib/python3.12/site-packages/huggingface_hub/utils/_validators.py", line 154, in validate_repo_id
+    raise HFValidationError(
+huggingface_hub.errors.HFValidationError: Repo id must be in the form 'repo_name' or 'namespace/repo_name': '/srv/llm/models/base/qwen2.5-coder-3b-instruct'. Use `repo_type` argument if needed.

@@ -1,0 +1,15 @@
+2025-10-10 23:40:37 | INFO | Logging to /srv/llm/logs/train_20251010_234037.log
+2025-10-10 23:40:37 | INFO | Using device: cuda
+2025-10-10 23:40:37 | INFO | GPU: NVIDIA GeForce RTX 2060 | total=6.0GB reserved=0.0B allocated=0.0B
+2025-10-10 23:40:37 | INFO | Loading tokenizer from: Qwen/Qwen2.5-Coder-3B-Instruct
+2025-10-10 23:40:38 | INFO | Loading base model: Qwen/Qwen2.5-Coder-3B-Instruct
+2025-10-10 23:40:51 | INFO | We will use 90% of the memory on device 0 for storing the model, and 10% for the buffer to avoid OOM. You can set `max_memory` in to a higher value to use more memory (at your own risk).
+2025-10-10 23:40:58 | INFO | Parameters: trainable=29,933,568 (1.73%) total=1,728,606,208
+2025-10-10 23:40:58 | ERROR | Fatal error: TrainingArguments.__init__() got an unexpected keyword argument 'evaluation_strategy'
+Traceback (most recent call last):
+  File "/srv/llm/scripts/train.py", line 509, in <module>
+    main()
+  File "/srv/llm/scripts/train.py", line 398, in main
+    targs = TrainingArguments(
+            ^^^^^^^^^^^^^^^^^^
+TypeError: TrainingArguments.__init__() got an unexpected keyword argument 'evaluation_strategy'

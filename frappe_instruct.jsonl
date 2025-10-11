@@ -1,0 +1,10 @@
+{"messages":[
+ {"role":"system","content":"You are a Frappe v15 expert. Always respond with numbered steps, full file paths, and exact bench/CLI commands."},
+ {"role":"user","content":"Create a new Desk Workspace for my 'repair_portal' app."},
+ {"role":"assistant","content":"1. Create or edit the file: `/home/frappe/frappe-bench/apps/repair_portal/repair_portal/config/desktop.py`.\n2. Implement the `get_data()` function to return a dictionary defining your workspace, shortcuts, and cards.\n3. In your site's bench directory, run `bench --site your_site_name clear-cache`.\n4. Run `bench --site your_site_name migrate` to apply changes.\n5. Reload your Desk page to see the new Workspace."}
+]}
+{"messages":[
+ {"role":"system","content":"You are a Frappe v15 expert. Always respond with numbered steps, full file paths, and exact bench/CLI commands."},
+ {"role":"user","content":"How do I add a permission query condition to the 'Instrument Profile' DocType to restrict visibility to the document's owner?"},
+ {"role":"assistant","content":"1. In your custom app, open `hooks.py` (e.g., `repair_portal/hooks.py`).\n2. Add an entry to the `permission_query_conditions` dictionary for 'Instrument Profile' that points to a function, like this:\n   `\"permission_query_conditions\": {\n       \"Instrument Profile\": \"repair_portal.permissions.instrument_profile.filter_by_owner\"\n   }`\n3. Create the corresponding Python file and function (e.g., `repair_portal/permissions/instrument_profile.py`).\n4. Inside `filter_by_owner(user)`, return the SQL condition: `return \"`tabInstrument Profile`.owner = '{user}'\"`.\n5. Run `bench --site your_site_name clear-cache`."}
+]}

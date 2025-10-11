@@ -1,0 +1,22 @@
+2025-10-10 23:44:06 | INFO | Logging to /srv/llm/logs/train_20251010_234406.log
+2025-10-10 23:44:06 | INFO | Using device: cuda
+2025-10-10 23:44:06 | INFO | GPU: NVIDIA GeForce RTX 2060 | total=6.4GB
+2025-10-10 23:44:06 | INFO | Loading tokenizer from: Qwen/Qwen2.5-Coder-3B-Instruct
+2025-10-10 23:44:06 | INFO | Loading base model: Qwen/Qwen2.5-Coder-3B-Instruct
+2025-10-10 23:44:08 | INFO | We will use 90% of the memory on device 0 for storing the model, and 10% for the buffer to avoid OOM. You can set `max_memory` in to a higher value to use more memory (at your own risk).
+2025-10-10 23:44:17 | INFO | Parameters: trainable=29,933,568 (1.73%) total=1,728,606,208
+2025-10-10 23:44:17 | INFO | Loading SFT dataset: /srv/llm/data/sft/frappe_sft.jsonl (sha256=b4509931143b3be9b563bc24ea6f54f41b289f1b19f2569773d7e9a2054830c7)
+2025-10-10 23:44:17 | ERROR | Fatal error: 'validation'
+Traceback (most recent call last):
+  File "/srv/llm/scripts/train.py", line 373, in <module>
+    main()
+  File "/srv/llm/scripts/train.py", line 301, in main
+    ds = load_sft_dataset(sft_path, cfg.val_split)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/srv/llm/scripts/train.py", line 173, in load_sft_dataset
+    logging.info("SFT sizes: train=%d val=%d", len(ds["train"]), len(ds["validation"]))
+                                                                     ~~^^^^^^^^^^^^^^
+  File "/home/dylan/.local/lib/python3.12/site-packages/datasets/dataset_dict.py", line 86, in __getitem__
+    return super().__getitem__(k)
+           ^^^^^^^^^^^^^^^^^^^^^^
+KeyError: 'validation'
