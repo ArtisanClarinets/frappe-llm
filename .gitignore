@@ -1,7 +1,6 @@
 __pycache__/
 *.py[cod]
 *.log
-*.Zone.Identifier
 hf_cache/**
 !hf_cache/
 !hf_cache/**/
@@ -14,9 +13,9 @@ venv_train/**
 train/**
 !train/
 !train/**/
-output/**
-!output/
-!output/**/
+outputs/**
+!outputs/
+!outputs/**/
 logs/**
 !logs/
 !logs/**/
@@ -33,6 +32,5 @@ index/*.faiss
 !venv_train/**/README.md
 !train/**/README.md
 !logs/**/README.md
-!output/**/README.md
+!outputs/**/README.md
 !models/**/README.md
-!prepared/**/README.md
