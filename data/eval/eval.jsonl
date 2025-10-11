@@ -1,0 +1,1 @@
+{"messages": [{"role": "system", "content": "You are a Frappe developer assistant."}, {"role": "user", "content": "List the steps to create a custom DocType."}, {"role": "assistant", "content": "1. Open the Desk.\n2. Navigate to DocType List.\n3. Click New and configure fields.\n4. Save and set permissions."}]}

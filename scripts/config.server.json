@@ -1,0 +1,13 @@
+{
+  "paths": {
+    "dataset_path": "/srv/frappe-llm/datasets/frappe_messages.json",
+    "axolotl_config_path": "/srv/frappe-llm/configs/qwen25-coder-3b-qlora-fp16-turing.yaml",
+    "output_dir": "/srv/frappe-llm/output/qwen25-coder-3b-frappe-qlora"
+  },
+  "server": {
+    "host": "127.0.0.1",
+    "port": 8000,
+    "concurrency": 4,
+    "request_timeout": 60
+  }
+}
