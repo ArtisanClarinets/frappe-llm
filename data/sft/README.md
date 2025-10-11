@@ -1,3 +1,3 @@
-# Supervised Fine-Tuning Data (Legacy)
+# Supervised Fine-Tuning Data
 
-Historical instruction/response JSONL files are kept here for reference. Normalise them into OpenAI-style chat examples with `python -m scripts.convert_to_messages` and write the result to `/srv/frappe-llm/datasets/frappe_messages.json` before launching Axolotl.
+This folder stores curated instruction/response pairs used by `scripts/train_sft.py`.

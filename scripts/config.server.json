@@ -1,13 +1,15 @@
 {
-  "paths": {
-    "dataset_path": "/srv/frappe-llm/datasets/frappe_messages.json",
-    "axolotl_config_path": "/srv/frappe-llm/configs/qwen25-coder-3b-qlora-fp16-turing.yaml",
-    "output_dir": "/srv/frappe-llm/output/qwen25-coder-3b-frappe-qlora"
+  "dataset": {
+    "instruction_path": "data/frappe_instruct.jsonl",
+    "sft_path": "sft/frappe_sft.jsonl"
+  },
+  "training": {
+    "output_dir": "models/finetune/q25c3b-frappe-sft"
   },
   "server": {
-    "host": "127.0.0.1",
+    "host": "0.0.0.0",
     "port": 8000,
-    "concurrency": 4,
-    "request_timeout": 60
+    "concurrency": 8,
+    "request_timeout": 120
   }
 }

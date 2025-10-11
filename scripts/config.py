@@ -1,132 +1,173 @@
-"""Runtime configuration helpers for the Frappe LLM training stack.
+"""Configuration models and utilities for the Frappe LLM training stack.
 
-The configuration surface is intentionally small: a trio of
-filesystem paths plus optional FastAPI server settings.  Every
-consumer loads the same schema so that dataset, Axolotl YAML, and
-output directories stay aligned across training and serving.
-
-Environment variables override disk values for rapid experiments:
-
-- ``FRAPPE_LLM_DATASET_PATH``
-- ``FRAPPE_LLM_AXOLOTL_CONFIG``
-- ``FRAPPE_LLM_OUTPUT_DIR``
-
-The defaults match the Fortune-500-ready layout documented in the
-project README.
+This module centralises every runtime configuration object that the
+scripts in :mod:`scripts` consume.  Each dataclass is intentionally kept
+small and serialisable to both JSON and YAML so that the configuration can
+be stored in Git and versioned just like code.  The defaults aim to be
+sensible for 2025 era hardware (A100/H100 class GPUs or modern consumer
+GPUs with bfloat16 support) and the Qwen2.5 Coder 3B Instruct checkpoint.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict
+from typing import Dict, List, Optional
+
 import json
-import os
 
-try:  # Optional dependency for YAML configurations
-    import yaml  # type: ignore
-except ModuleNotFoundError:  # pragma: no cover - exercised via tests without PyYAML
+try:
+    import yaml
+except ModuleNotFoundError:  # pragma: no cover - optional dependency
     yaml = None  # type: ignore[assignment]
-
-DEFAULT_DATASET_PATH = Path("/srv/frappe-llm/datasets/frappe_messages.json")
-DEFAULT_AXOLOTL_CONFIG_PATH = Path("/srv/frappe-llm/configs/qwen25-coder-3b-qlora-fp16-turing.yaml")
-DEFAULT_OUTPUT_DIR = Path("/srv/frappe-llm/output/qwen25-coder-3b-frappe-qlora")
 
 
 @dataclass(slots=True)
-class PathConfig:
-    """Filesystem paths shared by training and serving."""
+class DatasetConfig:
+    """Configuration for datasets used in the pipeline."""
 
-    dataset_path: Path = DEFAULT_DATASET_PATH
-    axolotl_config_path: Path = DEFAULT_AXOLOTL_CONFIG_PATH
-    output_dir: Path = DEFAULT_OUTPUT_DIR
+    instruction_path: Path
+    sft_path: Path
+    prefs_path: Optional[Path] = None
+    eval_path: Optional[Path] = None
+    max_samples: Optional[int] = None
 
     def __post_init__(self) -> None:
-        self.dataset_path = Path(self.dataset_path).expanduser()
-        self.axolotl_config_path = Path(self.axolotl_config_path).expanduser()
-        self.output_dir = Path(self.output_dir).expanduser()
+        self.instruction_path = Path(self.instruction_path)
+        self.sft_path = Path(self.sft_path)
+        self.prefs_path = Path(self.prefs_path) if self.prefs_path else None
+        self.eval_path = Path(self.eval_path) if self.eval_path else None
 
-    def apply_env_overrides(self) -> None:
-        dataset_override = os.environ.get("FRAPPE_LLM_DATASET_PATH")
-        if dataset_override:
-            self.dataset_path = Path(dataset_override).expanduser()
 
-        axolotl_override = os.environ.get("FRAPPE_LLM_AXOLOTL_CONFIG")
-        if axolotl_override:
-            self.axolotl_config_path = Path(axolotl_override).expanduser()
+@dataclass(slots=True)
+class ModelConfig:
+    """Configuration for the base model and tokenizer."""
 
-        output_override = os.environ.get("FRAPPE_LLM_OUTPUT_DIR")
-        if output_override:
-            self.output_dir = Path(output_override).expanduser()
+    model_name_or_path: str = "Qwen/Qwen2.5-Coder-3B-Instruct"
+    cache_dir: Optional[Path] = Path("hf_cache")
+    token: Optional[str] = None
+    trust_remote_code: bool = True
+    use_flash_attention: bool = True
+    load_in_4bit: bool = True
 
-    def validate(self) -> None:
-        if not self.dataset_path.exists():
-            raise FileNotFoundError(
-                f"Dataset path not found: {self.dataset_path}. "
-                "Place frappe_messages.json there or set FRAPPE_LLM_DATASET_PATH."
-            )
-        if not self.axolotl_config_path.exists():
-            raise FileNotFoundError(
-                f"Axolotl YAML not found: {self.axolotl_config_path}. "
-                "Copy configs/qwen25-coder-3b-qlora-fp16-turing.yaml into place or set FRAPPE_LLM_AXOLOTL_CONFIG."
-            )
-        # Ensure the parent directory exists to avoid late failures
-        self.output_dir.parent.mkdir(parents=True, exist_ok=True)
+    def __post_init__(self) -> None:
+        self.cache_dir = Path(self.cache_dir) if self.cache_dir else None
+
+
+@dataclass(slots=True)
+class LoraConfig:
+    """Parameter-Efficient Fine-Tuning (PEFT) configuration."""
+
+    r: int = 64
+    alpha: int = 128
+    dropout: float = 0.05
+    target_modules: List[str] = field(
+        default_factory=lambda: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj"]
+    )
+    bias: str = "none"
+    task_type: str = "CAUSAL_LM"
+
+
+@dataclass(slots=True)
+class TrainingArgumentsConfig:
+    """High level training arguments to feed into the Trainer classes."""
+
+    output_dir: Path = Path("models/finetune/q25c3b-frappe-sft")
+    per_device_train_batch_size: int = 2
+    per_device_eval_batch_size: int = 2
+    gradient_accumulation_steps: int = 8
+    learning_rate: float = 2e-4
+    num_train_epochs: float = 3.0
+    weight_decay: float = 0.01
+    warmup_ratio: float = 0.03
+    logging_steps: int = 10
+    save_steps: int = 200
+    eval_steps: int = 200
+    gradient_checkpointing: bool = True
+    max_grad_norm: float = 0.3
+    bf16: bool = True
+    fp16: bool = False
+    seed: int = 2025
+    report_to: List[str] = field(default_factory=lambda: ["tensorboard", "wandb"])
+    torch_compile: bool = True
+    optim: str = "paged_adamw_32bit"
+    max_seq_length: int = 4096
+
+    def __post_init__(self) -> None:
+        self.output_dir = Path(self.output_dir)
+
+
+@dataclass(slots=True)
+class EvaluationConfig:
+    """Runtime options for evaluation and synthetic test generation."""
+
+    enable_eval: bool = True
+    generation_max_new_tokens: int = 512
+    generation_temperature: float = 0.2
+    evaluation_examples: int = 64
 
 
 @dataclass(slots=True)
 class ServerConfig:
-    """FastAPI serving configuration."""
+    """Configuration shared by the FastAPI inference service."""
 
-    host: str = "127.0.0.1"
+    host: str = "0.0.0.0"
     port: int = 8000
     concurrency: int = 4
     request_timeout: int = 60
 
-    def validate(self) -> None:
-        if not (0 < self.port < 65536):
-            raise ValueError(f"Invalid port number: {self.port}")
-        if self.concurrency <= 0:
-            raise ValueError("Server concurrency must be positive")
-        if self.request_timeout <= 0:
-            raise ValueError("Request timeout must be positive")
-
 
 @dataclass(slots=True)
-class AppConfig:
-    """Root configuration object consumed by scripts."""
+class ExperimentConfig:
+    """Container dataclass aggregating the entire experiment setup."""
 
-    paths: PathConfig
-    server: ServerConfig
+    dataset: DatasetConfig
+    model: ModelConfig = field(default_factory=ModelConfig)
+    lora: LoraConfig = field(default_factory=LoraConfig)
+    training: TrainingArgumentsConfig = field(default_factory=TrainingArgumentsConfig)
+    evaluation: EvaluationConfig = field(default_factory=EvaluationConfig)
+    server: ServerConfig = field(default_factory=ServerConfig)
 
-    def validate(self) -> None:
-        self.paths.validate()
-        self.server.validate()
+    @classmethod
+    def from_mapping(cls, mapping: Dict[str, object]) -> "ExperimentConfig":
+        """Build an :class:`ExperimentConfig` from a raw mapping."""
+
+        def build(subcls, key):
+            data = mapping.get(key, {})
+            if isinstance(data, dict):
+                return subcls(**data)
+            raise TypeError(f"Expected dict for '{key}', received {type(data)!r}")
+
+        dataset_cfg = build(DatasetConfig, "dataset")
+        model_cfg = build(ModelConfig, "model") if "model" in mapping else ModelConfig()
+        lora_cfg = build(LoraConfig, "lora") if "lora" in mapping else LoraConfig()
+        training_cfg = (
+            build(TrainingArgumentsConfig, "training")
+            if "training" in mapping
+            else TrainingArgumentsConfig()
+        )
+        evaluation_cfg = (
+            build(EvaluationConfig, "evaluation")
+            if "evaluation" in mapping
+            else EvaluationConfig()
+        )
+        server_cfg = build(ServerConfig, "server") if "server" in mapping else ServerConfig()
+        return cls(
+            dataset=dataset_cfg,
+            model=model_cfg,
+            lora=lora_cfg,
+            training=training_cfg,
+            evaluation=evaluation_cfg,
+            server=server_cfg,
+        )
 
 
-def _build_from_mapping(mapping: Dict[str, Any]) -> AppConfig:
-    paths_data = mapping.get("paths", {})
-    server_data = mapping.get("server", {})
-
-    if not isinstance(paths_data, dict):
-        raise TypeError("'paths' must be a mapping")
-    if not isinstance(server_data, dict):
-        raise TypeError("'server' must be a mapping")
-
-    paths = PathConfig(**paths_data)
-    paths.apply_env_overrides()
-    server = ServerConfig(**server_data)
-    config = AppConfig(paths=paths, server=server)
-    config.validate()
-    return config
-
-
-def load_config(path: Path) -> AppConfig:
-    """Load configuration from JSON or YAML, applying env overrides."""
+def load_config(path: Path) -> ExperimentConfig:
+    """Load an :class:`ExperimentConfig` from a JSON or YAML file."""
 
     if not path.exists():
         raise FileNotFoundError(path)
 
-    if path.suffix.lower() in {".yml", ".yaml"}:
+    if path.suffix in {".yml", ".yaml"}:
         if yaml is None:
             raise RuntimeError(
                 "PyYAML is required to read YAML configuration files. Install it with `pip install pyyaml`."
@@ -138,9 +179,18 @@ def load_config(path: Path) -> AppConfig:
             data = json.load(handle)
 
     if not isinstance(data, dict):
-        raise TypeError("Configuration file must contain a JSON/YAML object at the top level")
+        raise TypeError("Top level configuration must be a JSON object / YAML mapping")
 
-    return _build_from_mapping(data)
+    return ExperimentConfig.from_mapping(data)
 
 
-__all__ = ["PathConfig", "ServerConfig", "AppConfig", "load_config"]
+__all__ = [
+    "DatasetConfig",
+    "ModelConfig",
+    "LoraConfig",
+    "TrainingArgumentsConfig",
+    "EvaluationConfig",
+    "ServerConfig",
+    "ExperimentConfig",
+    "load_config",
+]

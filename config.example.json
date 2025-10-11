@@ -1,11 +1,50 @@
 {
-  "paths": {
-    "dataset_path": "/srv/frappe-llm/datasets/frappe_messages.json",
-    "axolotl_config_path": "/srv/frappe-llm/configs/qwen25-coder-3b-qlora-fp16-turing.yaml",
-    "output_dir": "/srv/frappe-llm/output/qwen25-coder-3b-frappe-qlora"
+  "dataset": {
+    "instruction_path": "data/frappe_instruct.jsonl",
+    "sft_path": "sft/frappe_sft.jsonl",
+    "prefs_path": "prefs/frappe_pairs.jsonl",
+    "eval_path": "data/eval/eval.jsonl",
+    "max_samples": null
+  },
+  "model": {
+    "model_name_or_path": "Qwen/Qwen2.5-Coder-3B-Instruct",
+    "cache_dir": "hf_cache",
+    "trust_remote_code": true,
+    "use_flash_attention": true,
+    "load_in_4bit": true
+  },
+  "training": {
+    "output_dir": "models/finetune/q25c3b-frappe-sft",
+    "per_device_train_batch_size": 2,
+    "per_device_eval_batch_size": 2,
+    "gradient_accumulation_steps": 8,
+    "learning_rate": 0.0002,
+    "num_train_epochs": 3.0,
+    "weight_decay": 0.01,
+    "warmup_ratio": 0.03,
+    "logging_steps": 5,
+    "save_steps": 200,
+    "eval_steps": 200,
+    "gradient_checkpointing": true,
+    "max_grad_norm": 0.3,
+    "bf16": true,
+    "fp16": false,
+    "seed": 2025,
+    "report_to": [
+      "tensorboard"
+    ],
+    "torch_compile": true,
+    "optim": "paged_adamw_32bit",
+    "max_seq_length": 4096
+  },
+  "evaluation": {
+    "enable_eval": true,
+    "generation_max_new_tokens": 512,
+    "generation_temperature": 0.2,
+    "evaluation_examples": 64
   },
   "server": {
-    "host": "127.0.0.1",
+    "host": "0.0.0.0",
     "port": 8000,
     "concurrency": 4,
     "request_timeout": 60
