@@ -1,0 +1,58 @@
+base_model: Qwen/Qwen2.5-Coder-3B-Instruct
+trust_remote_code: true
+chat_template: qwen_25
+
+# precision/attention (Turing-safe)
+fp16: true
+bf16: false
+flash_attention: false
+attn_implementation: sdpa
+
+# QLoRA
+load_in_4bit: true
+adapter: qlora
+lora_r: 64
+lora_alpha: 32
+lora_dropout: 0.05
+lora_target_modules: [q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj]
+bnb_config_kwargs:
+  bnb_4bit_compute_dtype: float16
+  bnb_4bit_quant_type: nf4
+  bnb_4bit_use_double_quant: true
+
+# dataset (OpenAI messages)
+datasets:
+  - path: /srv/frappe-llm/datasets/frappe_messages.json
+    type: chat_template
+val_set_size: 0.02
+
+# training
+sequence_len: 4096
+train_on_inputs: false
+sample_packing: false
+micro_batch_size: 2
+gradient_accumulation_steps: 8
+num_epochs: 2.0
+learning_rate: 1.5e-4
+lr_scheduler: cosine
+warmup_ratio: 0.03
+weight_decay: 0.0
+max_grad_norm: 1.0
+optimizer: adamw_torch
+gradient_checkpointing: true
+logging_steps: 25
+
+# IO & stability
+output_dir: /srv/frappe-llm/output/qwen25-coder-3b-frappe-qlora
+save_steps: 200
+eval_steps: 200
+save_total_limit: 3
+save_safetensors: true
+
+# (optional) dataset_prepared_path to avoid last_run_prepared
+dataset_prepared_path: /srv/frappe-llm/prepared
+
+# conservative loader knobs (6 GB rigs)
+dataset_processes: 2
+dataloader_num_workers: 1
+dataloader_prefetch_factor: 16
