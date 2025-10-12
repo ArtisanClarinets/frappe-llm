@@ -1,0 +1,7 @@
+axolotl[flash-attn]
+transformers
+accelerate
+peft
+bitsandbytes
+datasets
+trl

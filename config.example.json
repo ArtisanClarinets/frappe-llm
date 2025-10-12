@@ -44,7 +44,7 @@
     "evaluation_examples": 64
   },
   "server": {
-    "host": "0.0.0.0",
+    "host": "127.0.0.1",
     "port": 8000,
     "concurrency": 4,
     "request_timeout": 60
