@@ -11,30 +11,69 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import random
+import subprocess
 from dataclasses import asdict
 from pathlib import Path
-from typing import Iterable, List, Sequence
+from typing import Iterable, List, Sequence, TYPE_CHECKING
 
-import torch
-from datasets import Dataset, DatasetDict
-from transformers import AutoModelForCausalLM, AutoTokenizer, TrainingArguments
+try:  # pragma: no cover - optional dependency for CLI usage
+    import torch
+except ModuleNotFoundError:  # pragma: no cover
+    torch = None  # type: ignore[assignment]
 
-try:
+if TYPE_CHECKING:  # pragma: no cover - typing helpers
+    from datasets import Dataset, DatasetDict
+    from transformers import AutoModelForCausalLM, AutoTokenizer, TrainingArguments
+    from peft import LoraConfig as PeftLoraConfig  # type: ignore
+    from peft import TaskType  # type: ignore
+    from peft import get_peft_model, prepare_model_for_kbit_training  # type: ignore
+    from trl import SFTTrainer
+
+try:  # pragma: no cover - optional dependencies for the CLI
+    from datasets import Dataset, DatasetDict
+except ModuleNotFoundError:  # pragma: no cover
+    Dataset = DatasetDict = None  # type: ignore[assignment]
+
+try:  # pragma: no cover - optional dependencies for the CLI
+    from transformers import AutoModelForCausalLM, AutoTokenizer, TrainingArguments
+except ModuleNotFoundError:  # pragma: no cover
+    AutoModelForCausalLM = AutoTokenizer = TrainingArguments = None  # type: ignore[assignment]
+
+try:  # pragma: no cover - optional dependencies for the CLI
     from peft import LoraConfig as PeftLoraConfig
     from peft import TaskType, get_peft_model, prepare_model_for_kbit_training
-except ModuleNotFoundError as exc:  # pragma: no cover - dependency hint
-    raise SystemExit(
-        "peft is required for LoRA fine-tuning. Install with `pip install peft`."
-    ) from exc
+except ModuleNotFoundError:  # pragma: no cover
+    PeftLoraConfig = TaskType = get_peft_model = prepare_model_for_kbit_training = None  # type: ignore[assignment]
 
-try:
+try:  # pragma: no cover - optional dependencies for the CLI
     from trl import SFTTrainer
-except ModuleNotFoundError as exc:  # pragma: no cover - dependency hint
-    raise SystemExit("trl is required for supervised fine-tuning. `pip install trl`."
-    ) from exc
+except ModuleNotFoundError:  # pragma: no cover
+    SFTTrainer = None  # type: ignore[assignment]
 
 from .config import ExperimentConfig, TrainingArgumentsConfig, load_config
+
+AXOLOTL_BIN = os.environ.get("AXOLOTL_BIN", "axolotl")
+VALID_SUBCOMMANDS = {"preprocess", "train", "merge"}
+
+
+def build_axolotl_command(subcommand: str, config_path: Path) -> List[str]:
+    """Construct the Axolotl CLI command for the requested subcommand."""
+
+    if subcommand not in VALID_SUBCOMMANDS:
+        raise ValueError(f"Unknown subcommand: {subcommand}")
+
+    resolved = Path(config_path).resolve()
+    cli_subcommand = "merge-lora" if subcommand == "merge" else subcommand
+    return [AXOLOTL_BIN, cli_subcommand, str(resolved)]
+
+
+def execute_subcommand(subcommand: str, config_path: Path) -> None:
+    """Run the Axolotl CLI with the desired action for supervised fine-tuning."""
+
+    command = build_axolotl_command(subcommand, config_path)
+    subprocess.run(command, check=True)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -82,12 +121,18 @@ def convert_chat_to_text(example: dict) -> dict:
 def make_dataset(samples: Iterable[dict]) -> Dataset:
     """Create a :class:`datasets.Dataset` from raw message dicts."""
 
+    if Dataset is None:  # pragma: no cover - runtime safeguard
+        raise RuntimeError("The `datasets` package is required. Install it with `pip install datasets`.")
+
     converted = [convert_chat_to_text(sample) for sample in samples]
     return Dataset.from_list(converted)
 
 
 def build_dataset_dict(cfg: ExperimentConfig) -> DatasetDict:
     """Assemble the train/eval datasets from configured JSONL sources."""
+
+    if DatasetDict is None:  # pragma: no cover - runtime safeguard
+        raise RuntimeError("The `datasets` package is required. Install it with `pip install datasets`.")
 
     train_samples = read_jsonl(cfg.dataset.sft_path, cfg.dataset.max_samples)
     dataset_dict = {"train": make_dataset(train_samples)}
@@ -107,6 +152,11 @@ def build_dataset_dict(cfg: ExperimentConfig) -> DatasetDict:
 
 
 def ensure_tokenizer(tokenizer_path: str, cache_dir: Path | None, trust_remote_code: bool) -> AutoTokenizer:
+    if AutoTokenizer is None:  # pragma: no cover - runtime safeguard
+        raise RuntimeError(
+            "transformers is required to load the tokenizer. Install it with `pip install transformers`."
+        )
+
     tokenizer = AutoTokenizer.from_pretrained(
         tokenizer_path,
         cache_dir=str(cache_dir) if cache_dir else None,
@@ -122,6 +172,17 @@ def ensure_tokenizer(tokenizer_path: str, cache_dir: Path | None, trust_remote_c
 
 def configure_model(model_name: str, cfg: ExperimentConfig) -> AutoModelForCausalLM:
     """Load the base model and prepare it for LoRA training."""
+
+    if AutoModelForCausalLM is None:  # pragma: no cover - runtime safeguard
+        raise RuntimeError(
+            "transformers is required to load the model. Install it with `pip install transformers`."
+        )
+    if torch is None:  # pragma: no cover - runtime safeguard
+        raise RuntimeError("PyTorch is required to configure the training model. Install torch.")
+    if None in (PeftLoraConfig, TaskType, get_peft_model, prepare_model_for_kbit_training):
+        raise RuntimeError(
+            "peft is required for LoRA fine-tuning. Install it with `pip install peft`."
+        )
 
     torch_dtype = torch.bfloat16 if cfg.training.bf16 else torch.float16
 
@@ -165,6 +226,11 @@ def configure_model(model_name: str, cfg: ExperimentConfig) -> AutoModelForCausa
 
 
 def create_training_arguments(cfg: TrainingArgumentsConfig, enable_eval: bool) -> TrainingArguments:
+    if TrainingArguments is None:  # pragma: no cover - runtime safeguard
+        raise RuntimeError(
+            "transformers is required to create training arguments. Install it with `pip install transformers`."
+        )
+
     common_kwargs = dict(
         output_dir=str(cfg.output_dir),
         per_device_train_batch_size=cfg.per_device_train_batch_size,
@@ -196,6 +262,8 @@ def create_training_arguments(cfg: TrainingArgumentsConfig, enable_eval: bool) -
 
 def set_random_seed(seed: int) -> None:
     random.seed(seed)
+    if torch is None:  # pragma: no cover - runtime safeguard
+        raise RuntimeError("PyTorch is required to set the training seed. Install torch.")
     torch.manual_seed(seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
@@ -212,7 +280,11 @@ def main() -> None:  # pragma: no cover - CLI entry point
     )
     args = parser.parse_args()
 
-    cfg = load_config(args.config)
+    app_cfg = load_config(args.config)
+    if app_cfg.experiment is None:
+        raise RuntimeError("Configuration file is missing experiment settings.")
+
+    cfg = app_cfg.experiment
     if args.max_samples is not None:
         cfg.dataset.max_samples = args.max_samples
 
@@ -249,6 +321,9 @@ def main() -> None:  # pragma: no cover - CLI entry point
         return texts
 
     eval_dataset = dataset["eval"] if enable_eval else None
+
+    if SFTTrainer is None:  # pragma: no cover - runtime safeguard
+        raise RuntimeError("trl is required for supervised fine-tuning. Install it with `pip install trl`.")
 
     trainer = SFTTrainer(
         model=model,

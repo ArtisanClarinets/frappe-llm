@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 from typing import Optional
 
-from .config import ExperimentConfig, load_config
+from .config import AppConfig, load_config
 
 LOGGER = logging.getLogger(__name__)
 
@@ -48,8 +48,11 @@ def main() -> None:  # pragma: no cover
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
     args = parse_args()
 
-    cfg: ExperimentConfig = load_config(args.config)
-    LOGGER.info("Starting SFT run for model %s", cfg.model.model_name_or_path)
+    app_cfg: AppConfig = load_config(args.config)
+    if app_cfg.experiment is None:
+        raise RuntimeError("Configuration file is missing experiment settings.")
+
+    LOGGER.info("Starting SFT run for model %s", app_cfg.experiment.model.model_name_or_path)
     launch_sft(args.config, args.max_samples)
 
 
