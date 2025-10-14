@@ -24,9 +24,8 @@ cd frappe-llm
 # Create the Axolotl virtualenv (CUDA 12+, PyTorch wheels expected in the index)
 make venv.ax
 
-# Optional: create the evaluation and RAG virtualenvs
+# Optional: create the evaluation virtualenv
 make venv.eval
-make venv.rag
 
 # Run the lightweight validation suite
 pytest
@@ -46,8 +45,6 @@ follow your SFT pipeline to generate it before launching preference optimization
 | Merge (LoRA → full) | N/A | `make merge.dpo` | Writes to `/srv/frappe-llm/models/q25c3b-frappe-dpo/merged` |
 | Evaluation (baseline) | N/A | `make eval.baseline` | Runs lm-eval on merged SFT checkpoint |
 | Evaluation (DPO) | N/A | `make eval.dpo` | Runs lm-eval on merged DPO checkpoint |
-| RAG index | `rag/index_build.py` | `make rag.index` | Builds FAISS + metadata under `/srv/frappe-llm/rag/index` |
-| Serving | `serve/api.py` | `make serve` | Launches FastAPI with optional RAG context |
 
 ## DPO Preference Optimization
 
@@ -79,8 +76,8 @@ checkpoint without discarding your existing assets.
    deployment.
 5. **Evaluate**
    ```bash
-   make eval.baseline  # ARC-Easy + HellaSwag zero-shot on the SFT merge
-   make eval.dpo       # same metrics on the DPO merge for apples-to-apples uplift
+   make eval.baseline  # evaluate the original merged SFT checkpoint
+   make eval.dpo       # evaluate the merged DPO checkpoint
    ```
 
 ### Dataset Curation Tips
@@ -96,63 +93,14 @@ checkpoint without discarding your existing assets.
 - AutoAWQ is **deprecated** in this stack. Prefer 4-bit loading with `bitsandbytes` during inference,
   or export GPTQ weights if you require on-disk quantization. AWQ-style exports via vLLM's
   `llm-compressor` can be evaluated later once the ecosystem stabilizes.
-- Run `make rag.index` whenever your documentation or source repositories change materially. The
-  manifest describes which paths were indexed.
-- Launch `make serve` for local QA. Use `use_rag=true` in JSON payloads to inject retrieved context.
+- To serve merged checkpoints, reuse the existing serving utilities in `scripts/api.py`, pointing the
+  loader to `/srv/frappe-llm/models/q25c3b-frappe-dpo/merged`.
 - Keep CUDA drivers at 12.x and install matching PyTorch wheels to ensure bitsandbytes operates in
   4-bit NF4 mode.
-
-## Honest Evaluation
-
-`lm-evaluation-harness` is wired for **honest**, zero-shot metrics on ARC-Easy and HellaSwag. Always
-compare the SFT baseline against the DPO merge to validate uplift.
-
-```bash
-# Baseline (merged SFT)
-bash scripts/eval_baseline.sh
-
-# Preference-tuned model (merged DPO)
-bash scripts/eval_dpo.sh
-```
-
-Record the resulting scores in deployment tickets and flag regressions greater than your agreed SLA.
-
-## RAG 2.0 Pipeline
-
-The `rag/` package provides end-to-end retrieval with dense embeddings and reranking:
-
-1. `make venv.rag` to provision dependencies (`FlagEmbedding`, `faiss-cpu`, `transformers>=4.42`).
-2. Build the index from vetted repositories:
-   ```bash
-   python rag/index_build.py --roots ../frappe,../erpnext,./docs --out /srv/frappe-llm/rag/index
-   ```
-3. Query the retriever in Python:
-   ```python
-   from rag.retriever import retrieve, pack_context
-   passages = retrieve("How do I add a DocType field?", 8)
-   context = pack_context(passages)
-   ```
-4. The FastAPI server (`make serve`) can prepend the packed context automatically when `use_rag=true`.
-
-See `docs/RAG.md` for tuning guidance and governance notes.
-
-## Minimal Serving
-
-`serve/api.py` exposes a streaming `/query` endpoint backed by the merged DPO model. Requests are
-rate-limited (5 per minute per client) and optionally inject RAG context. Configure the model path via
-`FRAPPE_SERVE_MODEL` or follow the default `/srv/frappe-llm/models/q25c3b-frappe-dpo/merged`.
 
 ## Testing
 
 All new automation is covered by pytest modules in `tests/`. The suite validates Axolotl configs,
-ensures the merge script syntax is correct, guards against dataset schema drift, and now exercises the
-RAG pipeline end-to-end with lightweight dummy embeddings.
+ensures the merge script syntax is correct, and guards against dataset schema drift.
 
-Run `pytest` before pushing changes. Continuous integration executes `ruff` linting and the full test
-suite (see `.github/workflows/ci.yml`).
-
-## Full Runbook
-
-- [Quantization guidance](docs/QUANTIZATION.md)
-- [RAG operations](docs/RAG.md)
-- [Operational governance checklist](docs/OPERATIONS.md)
+Run `pytest` before pushing changes. Continuous integration should execute the same command.

@@ -1,30 +1,21 @@
-SHELL := /bin/bash
-
-.PHONY: venv.ax venv.eval venv.rag train.dpo merge.dpo eval.baseline eval.dpo rag.index serve
+.PHONY: venv.ax venv.eval train.dpo merge.dpo eval.baseline eval.dpo
 
 venv.ax:
-	bash scripts/install_ax.sh
+bash scripts/install_ax.sh
 
 venv.eval:
-	bash scripts/install_lmeval.sh
-
-venv.rag:
-	python -m venv /srv/venvs/rag && source /srv/venvs/rag/bin/activate && pip install -U pip wheel && pip install -U -r requirements-rag.txt
+bash scripts/install_lmeval.sh
 
 train.dpo:
-	source /srv/frappe-llm/venvs/ax/bin/activate && axolotl train /srv/frappe-llm/configs/qwen25-coder-3b-dpo-frappe.yaml
+bash scripts/train_dpo.sh
 
 merge.dpo:
-	source /srv/frappe-llm/venvs/ax/bin/activate && axolotl merge-lora /srv/frappe-llm/configs/qwen25-coder-3b-dpo-frappe.yaml --lora-model-dir /srv/frappe-llm/models/q25c3b-frappe-dpo
+bash scripts/merge_dpo.sh
 
 eval.baseline:
-	source /srv/venvs/lmeval/bin/activate && bash /srv/frappe-llm/scripts/eval_baseline.sh
+source /srv/venvs/lmeval/bin/activate && \
+lm_eval --model hf --model_args pretrained=/srv/frappe-llm/models/q25c3b-frappe-sft/merged --tasks gsm8k --device cuda
 
 eval.dpo:
-	source /srv/venvs/lmeval/bin/activate && bash /srv/frappe-llm/scripts/eval_dpo.sh
-
-rag.index:
-	python rag/index_build.py --roots ../frappe,../erpnext,./docs --out /srv/frappe-llm/rag/index
-
-serve:
-	bash /srv/frappe-llm/scripts/serve.sh
+source /srv/venvs/lmeval/bin/activate && \
+lm_eval --model hf --model_args pretrained=/srv/frappe-llm/models/q25c3b-frappe-dpo/merged --tasks gsm8k --device cuda
