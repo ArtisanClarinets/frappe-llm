@@ -92,7 +92,8 @@ def format_prompt(prompt: str, *, use_rag: bool, rag_context: str) -> str:
 
 
 def stream_completion(prompt: str, *, max_new_tokens: int, temperature: float):
-    assert _model is not None and _tokenizer is not None
+    if _model is None or _tokenizer is None:
+        raise RuntimeError("_model and _tokenizer must be initialized before calling stream_completion")
     inputs = _tokenizer(prompt, return_tensors="pt")
     device = next(_model.parameters()).device
     inputs = {key: value.to(device) for key, value in inputs.items()}
