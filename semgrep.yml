@@ -1,0 +1,21 @@
+rules:
+  - id: python-no-shell-true
+    patterns:
+      - pattern: subprocess.$FUNC(..., shell=True, ...)
+    message: Avoid shell=True in subprocess calls.
+    languages: [python]
+    severity: ERROR
+  - id: python-no-os-system
+    pattern: os.system(...)
+    message: Use subprocess without shell=True instead of os.system.
+    languages: [python]
+    severity: WARNING
+  - id: python-sql-string-format
+    patterns:
+      - pattern: cursor.execute($QUERY)
+      - metavariable-pattern:
+          metavariable: $QUERY
+          pattern: f"...{...}..."
+    message: Avoid formatting SQL strings directly; use parameterized queries.
+    languages: [python]
+    severity: WARNING

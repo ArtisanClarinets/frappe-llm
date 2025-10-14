@@ -1,36 +1,44 @@
+# Python artifacts
 __pycache__/
 *.py[cod]
+*.so
+*.egg-info/
+.eggs/
 *.log
-hf_cache/**
-!hf_cache/
-!hf_cache/**/
-venv_rag/**
-!venv_rag/
-!venv_rag/**/
-venv_train/**
-!venv_train/
-!venv_train/**/
-train/**
-!train/
-!train/**/
-outputs/**
-!outputs/
-!outputs/**/
-logs/**
-!logs/
-!logs/**/
-models/**
-!models/
-!models/**/
-index/*.faiss
-*.safetensors
-.DS_Store
 
-# Allow placeholder readmes in the cached dirs
-!hf_cache/**/README.md
-!venv_rag/**/README.md
-!venv_train/**/README.md
-!train/**/README.md
-!logs/**/README.md
-!outputs/**/README.md
-!models/**/README.md
+# Virtual environments
+.venv/
+venv/
+venvs/
+venv_*/
+/srv/frappe-llm/venvs/
+/srv/venvs/
+
+# Jupyter and IDE
+.ipynb_checkpoints/
+.vscode/
+.idea/
+*.swp
+
+# Models and caches
+models/
+outputs/
+output/
+logs/
+logs/**
+checkpoints/
+ckpt/
+*.ckpt
+*.safetensors
+hf_cache/
+/srv/frappe-llm/models/
+
+# Data exports
+index/
+*.faiss
+*.bin
+
+# Local environment
+.env
+.env.*
+.DS_Store

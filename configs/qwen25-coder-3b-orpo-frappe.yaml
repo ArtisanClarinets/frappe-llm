@@ -1,0 +1,73 @@
+---
+base_model: Qwen/Qwen2.5-Coder-3B-Instruct
+trust_remote_code: true
+chat_template: qwen_25
+
+# We load the merged SFT checkpoint as "base" for preference optimization
+model_type: AutoModelForCausalLM
+pretrained_model_name_or_path: /srv/frappe-llm/models/q25c3b-frappe-sft/merged
+
+# 4-bit QLoRA to fit 6 GB
+load_in_4bit: true
+bnb_4bit_compute_dtype: float16
+bnb_4bit_quant_type: nf4
+
+# LoRA adapter for preference optimization
+adapter: lora
+lora_r: 32
+lora_alpha: 16
+lora_dropout: 0.05
+lora_target_modules:
+- q_proj
+- k_proj
+- v_proj
+- o_proj
+- up_proj
+- down_proj
+- gate_proj
+
+# RLHF method: ORPO
+rl: orpo
+orpo_alpha: 0.1
+loss_type: sigmoid
+remove_unused_columns: false
+
+# Use SIMPLE pairwise format in /srv/frappe-llm/data/dpo/frappe_pairs.jsonl
+datasets:
+- path: /srv/frappe-llm/data/dpo/frappe_pairs.jsonl
+  split: train
+  type:
+    field_prompt: "prompt"
+    field_chosen: "chosen"
+    field_rejected: "rejected"
+    prompt_format: "{prompt}"
+    chosen_format: "{chosen}"
+    rejected_format: "{rejected}"
+
+# Training
+output_dir: /srv/frappe-llm/models/q25c3b-frappe-dpo
+num_train_epochs: 1
+per_device_train_batch_size: 1
+gradient_accumulation_steps: 16
+learning_rate: 5e-6
+optim: adamw_torch
+weight_decay: 0.0
+lr_scheduler_type: cosine
+warmup_ratio: 0.05
+max_grad_norm: 1.0
+max_seq_length: 2048
+gradient_checkpointing: true
+sample_packing: true
+pad_to_multiple_of: 8
+
+# Runtime
+fp16: true
+bf16: false
+attn_implementation: sdpa
+flash_attention: false
+seed: 42
+logging_steps: 10
+save_steps: 200
+save_total_limit: 3
+eval_steps: 400
+do_eval: false

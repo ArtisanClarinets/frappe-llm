@@ -1,0 +1,5 @@
+FlagEmbedding
+faiss-cpu
+transformers>=4.42
+accelerate
+numpy

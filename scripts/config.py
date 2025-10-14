@@ -1,24 +1,21 @@
-"""Configuration models and utilities for the Frappe LLM training stack.
-
-This module centralises every runtime configuration object that the
-scripts in :mod:`scripts` consume.  Each dataclass is intentionally kept
-small and serialisable to both JSON and YAML so that the configuration can
-be stored in Git and versioned just like code.  The defaults aim to be
-sensible for 2025 era hardware (A100/H100 class GPUs or modern consumer
-GPUs with bfloat16 support) and the Qwen2.5 Coder 3B Instruct checkpoint.
-"""
+"""Configuration models and utilities for the Frappe LLM training stack."""
 from __future__ import annotations
 
+import json
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional
 
-import json
-
-try:
+try:  # pragma: no cover - optional dependency at runtime
     import yaml
-except ModuleNotFoundError:  # pragma: no cover - optional dependency
+except ModuleNotFoundError:  # pragma: no cover
     yaml = None  # type: ignore[assignment]
+
+
+# ---------------------------------------------------------------------------
+# Base experiment configuration (used by legacy training utilities)
+# ---------------------------------------------------------------------------
 
 
 @dataclass(slots=True)
@@ -110,10 +107,14 @@ class EvaluationConfig:
 class ServerConfig:
     """Configuration shared by the FastAPI inference service."""
 
-    host: str = "0.0.0.0"
+    host: str = "127.0.0.1"
     port: int = 8000
     concurrency: int = 4
     request_timeout: int = 60
+
+    def validate(self) -> None:
+        if not (1 <= self.port <= 65535):
+            raise ValueError("Server port must be between 1 and 65535")
 
 
 @dataclass(slots=True)
@@ -161,14 +162,57 @@ class ExperimentConfig:
         )
 
 
-def load_config(path: Path) -> ExperimentConfig:
-    """Load an :class:`ExperimentConfig` from a JSON or YAML file."""
+# ---------------------------------------------------------------------------
+# Application configuration wrapper (used by tests and CLI entry points)
+# ---------------------------------------------------------------------------
 
-    if not path.exists():
+
+@dataclass(slots=True)
+class PathsConfig:
+    """File-system layout for the application."""
+
+    dataset_path: Path = Path("/srv/frappe-llm/datasets/frappe_messages.json")
+    axolotl_config_path: Path = Path(
+        "/srv/frappe-llm/configs/qwen25-coder-3b-qlora-fp16-turing.yaml"
+    )
+    output_dir: Path = Path("/srv/frappe-llm/output/qwen25-coder-3b-frappe-qlora")
+
+    def __post_init__(self) -> None:
+        self.dataset_path = Path(self.dataset_path)
+        self.axolotl_config_path = Path(self.axolotl_config_path)
+        self.output_dir = Path(self.output_dir)
+
+    def apply_env_overrides(self) -> None:
+        overrides = {
+            "FRAPPE_LLM_DATASET_PATH": "dataset_path",
+            "FRAPPE_LLM_AXOLOTL_CONFIG": "axolotl_config_path",
+            "FRAPPE_LLM_OUTPUT_DIR": "output_dir",
+        }
+        for env_var, attr in overrides.items():
+            value = os.getenv(env_var)
+            if value:
+                setattr(self, attr, Path(value))
+
+
+@dataclass(slots=True)
+class AppConfig:
+    """High-level application configuration exposed to entry points."""
+
+    paths: PathsConfig = field(default_factory=PathsConfig)
+    server: ServerConfig = field(default_factory=ServerConfig)
+    experiment: Optional[ExperimentConfig] = None
+
+    def validate(self) -> None:
+        self.paths.apply_env_overrides()
+        self.server.validate()
+
+
+def _load_mapping(path: Path) -> Dict[str, object]:
+    if not path.exists():  # pragma: no cover - defensive branch
         raise FileNotFoundError(path)
 
     if path.suffix in {".yml", ".yaml"}:
-        if yaml is None:
+        if yaml is None:  # pragma: no cover - optional dependency guard
             raise RuntimeError(
                 "PyYAML is required to read YAML configuration files. Install it with `pip install pyyaml`."
             )
@@ -180,8 +224,27 @@ def load_config(path: Path) -> ExperimentConfig:
 
     if not isinstance(data, dict):
         raise TypeError("Top level configuration must be a JSON object / YAML mapping")
+    return data
 
-    return ExperimentConfig.from_mapping(data)
+
+def load_config(path: Path | str) -> AppConfig:
+    """Load an :class:`AppConfig` from a JSON or YAML file."""
+
+    mapping = _load_mapping(Path(path))
+
+    app_config = AppConfig()
+
+    if "paths" in mapping:
+        app_config.paths = PathsConfig(**mapping["paths"])
+    if "server" in mapping:
+        app_config.server = ServerConfig(**mapping["server"])
+
+    experiment_keys = {"dataset", "model", "lora", "training", "evaluation"}
+    if experiment_keys.intersection(mapping):
+        app_config.experiment = ExperimentConfig.from_mapping(mapping)
+
+    app_config.validate()
+    return app_config
 
 
 __all__ = [
@@ -192,5 +255,7 @@ __all__ = [
     "EvaluationConfig",
     "ServerConfig",
     "ExperimentConfig",
+    "PathsConfig",
+    "AppConfig",
     "load_config",
 ]
